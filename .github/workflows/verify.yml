@@ -1,0 +1,54 @@
+name: Verify certificates
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  exact-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: supplement
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python version (standard library only; nothing is installed)
+        run: python -VV
+
+      - name: Extract the eleven branch-and-bound trees from certificates.tar.xz
+        run: python unpack.py
+
+      - name: Supplement checksum manifest, including the extracted trees (CONTENTS.sha256)
+        run: sha256sum -c CONTENTS.sha256
+
+      - name: Proposition 5.1 tree (6,078 leaves, bound 5588/9417 < 54/91), witness points, fault injection
+        run: python check_starstar.py
+
+      - name: Proposition 5.2 trees at budgets 0.70 to 0.90 with attained points, and the midpoint envelope
+        run: python check_lambda.py --envelope
+
+      - name: Trees for the program without (*) at the same budgets, with attained points
+        run: python check_lambda.py cert_base_0p70.json cert_base_0p75.json cert_base_0p80.json cert_base_0p85.json cert_base_0p90.json
+
+      - name: Parametric bounds of Section 6 and the breakpoint check of Corollary 1.3(ii)
+        run: python parametric_bounds.py | tee parametric-bounds.ci.txt
+
+      - name: Re-run the verifiers with optimisation flags (checks must not be assert statements)
+        run: |
+          python -O check_lambda.py cert_lambda_0p75.json
+          python -O parametric_bounds.py | grep -q '^ALL PARAMETRIC CHECKS PASSED'
+
+      - name: Upload the parametric-bounds table
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parametric-bounds
+          path: supplement/parametric-bounds.ci.txt
+          if-no-files-found: ignore

@@ -1,0 +1,10 @@
+# Trees extracted from supplement/certificates.tar.xz by unpack.py
+supplement/cert_*.json
+# CI output
+supplement/parametric-bounds.ci.txt
+__pycache__/
+*.pyc
+.DS_Store
+# local scratch, not part of the release
+_ref/
+_test/
